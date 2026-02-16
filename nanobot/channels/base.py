@@ -68,13 +68,24 @@ class BaseChannel(ABC):
         Returns:
             True if allowed, False otherwise.
         """
+        deny_list = getattr(self.config, "deny_from", [])
         allow_list = getattr(self.config, "allow_from", [])
+        
+        sender_str = str(sender_id)
+        
+        # Check deny list first
+        if deny_list:
+            if sender_str in deny_list:
+                return False
+            if "|" in sender_str:
+                for part in sender_str.split("|"):
+                    if part and part in deny_list:
+                        return False
         
         # If no allow list, allow everyone
         if not allow_list:
             return True
         
-        sender_str = str(sender_id)
         if sender_str in allow_list:
             return True
         if "|" in sender_str:

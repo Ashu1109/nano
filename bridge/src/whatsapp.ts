@@ -111,7 +111,7 @@ export class WhatsAppClient {
 
       for (const msg of messages) {
         // Allow self-messages for testing (e.g., "Note to Self")
-        // if (msg.key.fromMe) continue;
+        if (msg.key.fromMe) continue;
 
         // Skip status updates
         if (msg.key.remoteJid === 'status@broadcast') continue;
@@ -120,6 +120,7 @@ export class WhatsAppClient {
         if (!content) continue;
 
         const isGroup = msg.key.remoteJid?.endsWith('@g.us') || false;
+        if (isGroup) continue;
 
         this.options.onMessage({
           id: msg.key.id || '',
@@ -148,7 +149,7 @@ export class WhatsAppClient {
     }
 
     // Image with caption
-    if (message.imageMessage?.caption) {
+    if (message.imageMessage) {
       return `[Image] ${message.imageMessage.caption}`;
     }
 

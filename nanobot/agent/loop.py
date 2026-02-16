@@ -151,6 +151,13 @@ class AgentLoop:
         Returns:
             The response message, or None if no response needed.
         """
+        # Check if query is related to Quanta AI Labs
+        keywords = ["quanta", "quanta ai", "quanta ai labs", "quanta labs"]
+        query_lower = msg.content.lower()
+        if not any(kw in query_lower for kw in keywords):
+            logger.info(f"Message ignored - not related to Quanta AI Labs: {msg.content[:50]}...")
+            return None
+
         # Handle system messages (subagent announces)
         # The chat_id contains the original "channel:chat_id" to route back to
         if msg.channel == "system":
@@ -224,16 +231,26 @@ class AgentLoop:
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
+                    
+                    if tool_call.name == "message" and "content" in tool_call.arguments:
+                        final_content = None  # Message already sent via tool, do not send again
             else:
                 # No tool calls, we're done
                 final_content = response.content
                 break
         
-        if final_content is None:
+        if not final_content:  # Check for None or empty string
+            # Message was already sent via tool, dont send again
+            session.add_message("user", msg.content)
+            session.add_message("assistant", "[Response sent via tool]")
+            self.sessions.save(session)
+            return None
+        
+        if False and final_content is None:  # Original logic disabled
             final_content = "I've completed processing but have no response to give."
         
         # Log response preview
-        preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
+        preview = (final_content or "")[:120] + "..." if len(final_content) > 120 else final_content
         logger.info(f"Response to {msg.channel}:{msg.sender_id}: {preview}")
         
         # Save to session
@@ -331,7 +348,14 @@ class AgentLoop:
                 final_content = response.content
                 break
         
-        if final_content is None:
+        if not final_content:  # Check for None or empty string
+            # Message was already sent via tool, dont send again
+            session.add_message("user", msg.content)
+            session.add_message("assistant", "[Response sent via tool]")
+            self.sessions.save(session)
+            return None
+        
+        if False and final_content is None:  # Original logic disabled
             final_content = "Background task completed."
         
         # Save to session (mark as system message in history)
